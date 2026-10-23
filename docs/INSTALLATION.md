@@ -64,7 +64,15 @@ les appels SNCF. L'[ancien guide YAML](LEGACY_YAML.md) reste disponible comme r�
 
 - **L'intégration n'apparaît pas dans Appareils et services** : redémarrer Home
   Assistant après le téléchargement HACS, puis recharger le navigateur.
-- **Clé API refusée** : vérifier la clé et son activation auprès de la SNCF.
+- **Clé vide** : coller uniquement le token reçu de la SNCF, sans guillemets ni préfixe.
+- **HTTP 401** : l’API SNCF ne reconnaît pas la clé envoyée.
+- **HTTP 403** : l’API interdit l’accès aux données demandées ; ce refus ne prouve
+  pas que la clé est incorrecte. Vérifier son activation et ses droits auprès de la SNCF.
+- Pour isoler un problème de clé, ouvrir `https://api.sncf.com/v1/coverage/sncf`
+  dans une fenêtre privée. Dans la demande de connexion, utiliser la clé comme
+  identifiant et laisser le mot de passe vide. Une réponse contenant `regions`
+  confirme l’accès à cette couverture ; un refus permet de reproduire le problème
+  sans Home Assistant. Ne pas inclure la clé dans une URL partagée.
 - **Quota atteint** : attendre la réouverture du quota ou de la limite de débit ;
   l'intégration espace les nouvelles tentatives lorsqu'un code 429 est reçu.
 - **Impossible de récupérer les données** : consulter les journaux de

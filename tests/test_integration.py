@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.sncf_epernon.api import InvalidAuth, RateLimited, SncfClient, SncfError
+from custom_components.sncf_epernon.api import AccessDenied, InvalidAuth, RateLimited, SncfClient, SncfError
 from custom_components.sncf_epernon.config_flow import SncfConfigFlow
 from custom_components.sncf_epernon.const import DOMAIN
 from custom_components.sncf_epernon.coordinator import SncfCoordinator
@@ -147,10 +147,11 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["fetched_at"].tzinfo, UTC)
         self.assertEqual({c.kwargs["params"]["data_freshness"] for c in session.get.call_args_list}, {"base_schedule", "realtime"})
         self.assertTrue(all(c.kwargs["auth"].login == "test-key" for c in session.get.call_args_list))
+        self.assertTrue(all(c.kwargs["auth"].password == "" for c in session.get.call_args_list))
 
     async def test_http_and_payload_errors(self):
         for status, payload, expected in (
-            (401, {}, InvalidAuth), (403, {}, InvalidAuth), (429, {}, RateLimited),
+            (401, {}, InvalidAuth), (403, {}, AccessDenied), (429, {}, RateLimited),
             (200, [], SncfError), (200, {"error": {"id": "no_solution"}}, SncfError),
             (200, {"departures": None}, SncfError),
         ):
@@ -211,6 +212,29 @@ class HomeAssistantTests(unittest.IsolatedAsyncioTestCase):
             result = await flow.async_step_user({"api_key": "wrong"})
         self.assertEqual(result["errors"], {"base": "invalid_auth"})
 
+    async def test_empty_key_does_not_contact_sncf(self):
+        flow = SncfConfigFlow()
+        flow.hass = self.hass
+        with patch("custom_components.sncf_epernon.config_flow.SncfClient.async_fetch", new_callable=AsyncMock) as fetch:
+            self.assertEqual(await flow._validate({"api_key": "  "}), {"base": "missing_api_key"})
+            fetch.assert_not_awaited()
+
+    async def test_forbidden_is_not_reported_as_invalid_key(self):
+        flow = SncfConfigFlow()
+        flow.hass = self.hass
+        with patch("custom_components.sncf_epernon.config_flow.SncfClient.async_fetch", new_callable=AsyncMock, side_effect=AccessDenied()):
+            self.assertEqual(await flow._validate({"api_key": "test-key"}), {"base": "access_denied"})
+
+    async def test_key_trimmed_before_request(self):
+        flow = SncfConfigFlow()
+        flow.hass = self.hass
+        data = {"api_key": "  test-key\n"}
+        with patch("custom_components.sncf_epernon.config_flow.SncfClient") as client:
+            client.return_value.async_fetch = AsyncMock(return_value={})
+            self.assertEqual(await flow._validate(data), {})
+            self.assertEqual(client.call_args.args[1], "test-key")
+        self.assertEqual(data["api_key"], "test-key")
+
     async def test_options_restrict_polling_and_train_count(self):
         from custom_components.sncf_epernon.config_flow import SncfOptionsFlow
         self.hass.config_entries._entries[self.entry.entry_id] = self.entry
@@ -251,7 +275,7 @@ class HomeAssistantTests(unittest.IsolatedAsyncioTestCase):
         client = MagicMock()
         client.async_fetch = AsyncMock()
         coordinator = SncfCoordinator(self.hass, self.entry, client)
-        for error, expected in ((InvalidAuth(), ConfigEntryAuthFailed), (RateLimited(), UpdateFailed), (SncfError(), UpdateFailed)):
+        for error, expected in ((InvalidAuth(), ConfigEntryAuthFailed), (AccessDenied(), UpdateFailed), (RateLimited(), UpdateFailed), (SncfError(), UpdateFailed)):
             client.async_fetch.side_effect = error
             with self.assertRaises(expected):
                 await coordinator._async_update_data()

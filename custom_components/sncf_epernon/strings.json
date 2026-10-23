@@ -25,9 +25,11 @@
       }
     },
     "error": {
-      "invalid_auth": "Invalid or empty API key.",
+      "invalid_auth": "SNCF does not recognize this key (HTTP 401). Enter only the token you received, without quotes or a prefix.",
       "cannot_connect": "Cannot retrieve SNCF data.",
-      "rate_limited": "SNCF rate limit reached. Try again later."
+      "rate_limited": "SNCF rate limit reached. Try again later.",
+      "missing_api_key": "Enter your SNCF API key.",
+      "access_denied": "SNCF denied access to the requested data (HTTP 403). Check your key permissions or activation with SNCF."
     },
     "abort": {
       "already_configured": "This route is already configured.",

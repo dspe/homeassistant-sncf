@@ -25,9 +25,11 @@
       }
     },
     "error": {
-      "invalid_auth": "Clé API refusée ou vide.",
+      "invalid_auth": "La SNCF ne reconnaît pas cette clé (HTTP 401). Recopiez uniquement le token reçu, sans guillemets ni préfixe.",
       "cannot_connect": "Impossible de récupérer les données SNCF.",
-      "rate_limited": "Quota SNCF atteint. Réessayez plus tard."
+      "rate_limited": "Quota SNCF atteint. Réessayez plus tard.",
+      "missing_api_key": "Saisissez votre clé API SNCF.",
+      "access_denied": "La SNCF refuse l’accès aux données demandées (HTTP 403). Vérifiez les droits ou l’activation de votre clé auprès de la SNCF."
     },
     "abort": {
       "already_configured": "Ce trajet est déjà configuré.",

@@ -11,7 +11,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
-from .api import InvalidAuth, RateLimited, SncfClient, SncfError
+from .api import AccessDenied, InvalidAuth, RateLimited, SncfClient, SncfError
 from .const import (
     CONF_COUNT, CONF_INTERVAL, DEFAULT_COUNT, DEFAULT_INTERVAL, DOMAIN, ROUTE_ID, TITLE,
 )
@@ -34,11 +34,13 @@ class SncfConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _validate(self, data: dict[str, Any]) -> dict[str, str]:
         key = data[CONF_API_KEY].strip()
         if not key:
-            return {"base": "invalid_auth"}
+            return {"base": "missing_api_key"}
         try:
             await SncfClient(async_get_clientsession(self.hass), key).async_fetch()
         except InvalidAuth:
             return {"base": "invalid_auth"}
+        except AccessDenied:
+            return {"base": "access_denied"}
         except RateLimited:
             return {"base": "rate_limited"}
         except SncfError:

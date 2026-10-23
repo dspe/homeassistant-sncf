@@ -18,6 +18,10 @@ class InvalidAuth(SncfError):
     """API key rejected."""
 
 
+class AccessDenied(SncfError):
+    """The token is not allowed to access the requested SNCF coverage."""
+
+
 class RateLimited(SncfError):
     """SNCF request quota reached."""
 
@@ -44,8 +48,10 @@ class SncfClient:
                 },
                 timeout=ClientTimeout(total=20),
             ) as response:
-                if response.status in (401, 403):
-                    raise InvalidAuth("Clé SNCF refusée")
+                if response.status == 401:
+                    raise InvalidAuth("La SNCF ne reconnaît pas la clé API (HTTP 401)")
+                if response.status == 403:
+                    raise AccessDenied("La SNCF interdit l’accès aux données demandées (HTTP 403)")
                 if response.status == 429:
                     retry = response.headers.get("Retry-After", "300")
                     raise RateLimited(max(60, int(retry)) if retry.isdecimal() else 300)
