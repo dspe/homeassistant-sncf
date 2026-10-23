@@ -32,19 +32,31 @@ cards:
         th+: "text-align: left; padding: 10px 6px;"
         td+: "padding: 12px 6px; white-space: nowrap;"
   - type: markdown
-    content: >-
+    content: |-
       {% set entity = 'sensor.sncf_epernon_paris' %}
+      {% set trains = state_attr(entity, 'trains') or [] %}
+      {% set messages = trains | map(attribute='messages', default=[]) | sum(start=[]) | unique | list %}
       {% if states(entity) in ['unavailable', 'unknown'] %}
       🚆 **Épernon → Paris-Montparnasse**
 
       ⚠️ Capteur SNCF absent, en cours de chargement ou indisponible.
 
       Vérifier **Paramètres → Appareils et services → SNCF Épernon Paris**.
-      {% elif not state_attr(entity, 'trains') %}
-      Aucun départ vers Paris trouvé dans les données reçues.
       {% else %}
       Actualisé à {{ as_timestamp(states(entity)) | timestamp_custom('%H:%M') }} · SNCF
 
+      {% if not trains %}
+      Aucun départ vers Paris trouvé dans les données reçues.
+      {% endif %}
+      {% if trains | selectattr('supprime') | list %}
+      ⚠️ Les horaires SNCF peuvent déjà exclure certains trains supprimés. La liste peut donc être incomplète en période de perturbations.
+      {% endif %}
+      {% if messages %}
+      **Informations SNCF associées aux départs affichés :**
+      {% for message in messages %}
+      - {{ message }}
+      {% endfor %}
+      {% endif %}
       {% for warning in state_attr(entity, 'avertissements') or [] %}
       ⚠️ {{ warning }}
 
