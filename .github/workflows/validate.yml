@@ -1,0 +1,26 @@
+name: Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  templates:
+    name: YAML et scénarios de trains
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Installer les outils de validation
+        run: python -m pip install -r requirements-dev.txt
+      - name: Vérifier les fichiers et les scénarios
+        run: python tests/verify_templates.py

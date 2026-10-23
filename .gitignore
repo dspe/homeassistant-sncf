@@ -1,0 +1,20 @@
+# Données privées et fichiers générés par Home Assistant
+secrets.yaml
+secrets.yml
+.storage/
+.cloud/
+*.db
+*.db-*
+*.log
+*.log.*
+backups/
+.env
+.env.*
+
+# Environnement de développement
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+.idea/
+.vscode/

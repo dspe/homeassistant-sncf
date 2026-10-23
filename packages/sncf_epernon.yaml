@@ -1,0 +1,199 @@
+# À copier dans /config/packages/sncf_epernon.yaml
+# La clé sncf_api_key doit être ajoutée dans /config/secrets.yaml.
+rest:
+  - resource: https://api.sncf.com/v1/coverage/sncf/stop_areas/stop_area:SNCF:87394114/departures
+    authentication: basic
+    username: !secret sncf_api_key
+    password: ""
+    scan_interval: 60
+    timeout: 20
+    params:
+      from_datetime: "{{ (now() - timedelta(hours=3)).strftime('%Y%m%dT%H%M%S') }}"
+      duration: 97200
+      count: 80
+      depth: 2
+      data_freshness: base_schedule
+      disable_geojson: "true"
+    sensor:
+      - name: SNCF Epernon Prevu
+        unique_id: sncf_epernon_prevu_v1
+        device_class: timestamp
+        value_template: >-
+          {{ now().isoformat() if value_json is defined and
+             value_json.departures is defined and value_json.error is not defined
+             else none }}
+        json_attributes:
+          - departures
+          - disruptions
+
+  - resource: https://api.sncf.com/v1/coverage/sncf/stop_areas/stop_area:SNCF:87394114/departures
+    authentication: basic
+    username: !secret sncf_api_key
+    password: ""
+    scan_interval: 60
+    timeout: 20
+    params:
+      from_datetime: "{{ (now() - timedelta(hours=3)).strftime('%Y%m%dT%H%M%S') }}"
+      duration: 97200
+      count: 80
+      depth: 2
+      data_freshness: realtime
+      disable_geojson: "true"
+    sensor:
+      - name: SNCF Epernon Temps Reel
+        unique_id: sncf_epernon_temps_reel_v1
+        device_class: timestamp
+        value_template: >-
+          {{ now().isoformat() if value_json is defined and
+             value_json.departures is defined and value_json.error is not defined
+             else none }}
+        json_attributes:
+          - departures
+          - disruptions
+
+template:
+  - sensor:
+      - name: Trains Epernon Paris
+        unique_id: trains_epernon_paris_v1
+        icon: mdi:train
+        device_class: timestamp
+        availability: >-
+          {% set p = as_timestamp(states('sensor.sncf_epernon_prevu'), 0) %}
+          {% set r = as_timestamp(states('sensor.sncf_epernon_temps_reel'), 0) %}
+          {{ 0 <= as_timestamp(now()) - p < 180 and
+             0 <= as_timestamp(now()) - r < 180 }}
+        state: >-
+          {% set p = states('sensor.sncf_epernon_prevu') %}
+          {% set r = states('sensor.sncf_epernon_temps_reel') %}
+          {{ [p, r] | sort | first if as_timestamp(p, 0) and as_timestamp(r, 0) else none }}
+        attributes:
+          trains: >-
+            {% set planned = state_attr('sensor.sncf_epernon_prevu', 'departures') or [] %}
+            {% set live = state_attr('sensor.sncf_epernon_temps_reel', 'departures') or [] %}
+            {% set disruptions = (state_attr('sensor.sncf_epernon_temps_reel', 'disruptions') or [])
+               + (state_attr('sensor.sncf_epernon_prevu', 'disruptions') or []) %}
+            {% set out = namespace(rows=[], seen=[]) %}
+            {% set current = now().strftime('%Y%m%dT%H%M%S') %}
+            {# Le temps réel passe en premier, pour remplacer les horaires prévus. #}
+            {% for d in live + planned %}
+              {% set info = d.get('display_informations', {}) %}
+              {% set direction = info.get('direction', '') | lower %}
+              {% set mode = info.get('physical_mode', '') | lower %}
+              {% set dt = d.get('stop_date_time', {}) %}
+              {% set expected = dt.get('departure_date_time', '') %}
+              {% set base = dt.get('base_departure_date_time') or expected %}
+              {% set number = info.get('headsign') or info.get('trip_short_name') or '—' %}
+              {% set key = number ~ '|' ~ base %}
+              {% set bdt = strptime(base, '%Y%m%dT%H%M%S', none) %}
+              {% set edt = strptime(expected, '%Y%m%dT%H%M%S', none) %}
+              {% if 'paris' in direction and 'montparnasse' in direction
+                    and 'train' in mode and base | length == 15
+                    and expected | length == 15 and key not in out.seen
+                    and bdt is not none and edt is not none %}
+                {% set out.seen = out.seen + [key] %}
+                {% set s = namespace(cancelled=false, warning=false, alert_ids=[], done=[]) %}
+                {# Les liens d'une perturbation doivent appartenir à ce départ. #}
+                {% for other in live + planned %}
+                  {% set oi = other.get('display_informations', {}) %}
+                  {% set ot = other.get('stop_date_time', {}) %}
+                  {% set ob = ot.get('base_departure_date_time') or ot.get('departure_date_time', '') %}
+                  {% set on = oi.get('headsign') or oi.get('trip_short_name') or '—' %}
+                  {% if on ~ '|' ~ ob == key %}
+                    {% set links = oi.get('links', []) + ot.get('links', []) + other.get('links', []) %}
+                    {% for link in links if link.get('type') == 'disruption' %}
+                      {% set s.alert_ids = s.alert_ids + [link.get('id')] %}
+                    {% endfor %}
+                  {% endif %}
+                {% endfor %}
+                {% for impact in disruptions if impact.get('id') in s.alert_ids
+                      and impact.get('id') not in s.done %}
+                  {% set s.done = s.done + [impact.get('id')] %}
+                  {% set active = namespace(value=false) %}
+                  {% for period in impact.get('application_periods', []) %}
+                    {% if period.get('begin', 'z') <= base <= period.get('end', '') %}
+                      {% set active.value = true %}
+                    {% endif %}
+                  {% endfor %}
+                  {% if impact.get('application_patterns') %}
+                    {% set pattern_match = namespace(value=false) %}
+                    {% set weekdays = ['monday', 'tuesday', 'wednesday', 'thursday',
+                                       'friday', 'saturday', 'sunday'] %}
+                    {% for pattern in impact.application_patterns %}
+                      {% set dates = pattern.get('application_period', {}) %}
+                      {% for day in [bdt, bdt - timedelta(days=1)] %}
+                        {% set day_date = day.strftime('%Y%m%d') %}
+                        {% set week = pattern.get('week_pattern', {}) %}
+                        {% if dates.get('begin', 'z') <= day_date <= dates.get('end', '')
+                              and (not week or week.get(weekdays[day.weekday()], false)) %}
+                          {% if not pattern.get('time_slots') and day == bdt %}
+                            {% set pattern_match.value = true %}
+                          {% endif %}
+                          {% for slot in pattern.get('time_slots', []) %}
+                            {% set start = slot.get('begin', 'z') %}
+                            {% set end = slot.get('end', '') %}
+                            {% set time = base[9:] %}
+                            {% if (start < end and day == bdt and start <= time < end)
+                                  or (start > end and ((day == bdt and time >= start)
+                                      or (day != bdt and time < end))) %}
+                              {% set pattern_match.value = true %}
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                      {% endfor %}
+                    {% endfor %}
+                    {% set active.value = pattern_match.value and
+                       (active.value or not impact.get('application_periods')) %}
+                  {% endif %}
+                  {% if active.value %}
+                    {% set effect = impact.get('severity', {}).get('effect', '') %}
+                    {% if effect == 'NO_SERVICE' %}
+                      {% set s.cancelled = true %}
+                    {% elif effect in ['REDUCED_SERVICE', 'MODIFIED_SERVICE', 'DETOUR',
+                                        'SIGNIFICANT_DELAYS', 'OTHER_EFFECT'] %}
+                      {% set s.warning = true %}
+                    {% endif %}
+                    {% for obj in impact.get('impacted_objects', []) %}
+                      {% for stop in obj.get('impacted_stops', []) %}
+                        {% if stop.get('stop_point', {}).get('id') == d.get('stop_point', {}).get('id')
+                              and stop.get('departure_status') == 'deleted' %}
+                          {% set s.cancelled = true %}
+                        {% endif %}
+                      {% endfor %}
+                    {% endfor %}
+                  {% endif %}
+                {% endfor %}
+                {% set freshness = dt.get('data_freshness', dt.get('stop_date_time', '')) %}
+                {% set real = d in live and freshness == 'realtime' %}
+                {% if bdt is not none and edt is not none %}
+                  {% set delay = ((edt - bdt).total_seconds() / 60) | round(0, 'ceil') | int %}
+                  {% set status = '⚪ Horaire prévu' %}
+                  {% set shown_expected = '—' %}
+                  {% set keep_until = base %}
+                  {% if s.cancelled %}
+                    {% set status = '🔴 Supprimé' %}
+                  {% elif d in live and delay > 0 %}
+                    {% set status = '🟠 +' ~ delay ~ ' min' %}
+                    {% set shown_expected = edt.strftime('%H:%M') %}
+                    {% set keep_until = expected %}
+                  {% elif s.warning %}
+                    {% set status = '🟠 Perturbation' %}
+                  {% elif real %}
+                    {% set status = '🟢 À l’heure' if delay == 0 else '🟠 En avance' %}
+                    {% set shown_expected = edt.strftime('%H:%M') %}
+                    {% set keep_until = expected %}
+                  {% endif %}
+                  {% if keep_until >= current %}
+                    {% set label = bdt.strftime('%H:%M') if base[:8] == current[:8]
+                       else bdt.strftime('%d/%m %H:%M') %}
+                    {% set safe_number = number | string | replace('&', '&amp;')
+                       | replace('<', '&lt;') | replace('>', '&gt;') %}
+                    {% set out.rows = out.rows + [dict(numero=safe_number,
+                       prevu=label, estime=shown_expected, statut=status,
+                       tri=base, depart_prevu=base, depart_estime=expected,
+                       retard_minutes=delay if d in live and not s.cancelled else none,
+                       supprime=s.cancelled)] %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ (out.rows | sort(attribute='tri'))[:5] }}
