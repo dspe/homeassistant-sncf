@@ -15,6 +15,7 @@ from google.transit import gtfs_realtime_pb2 as rt
 PARIS = ZoneInfo("Europe/Paris")
 ORIGIN = "87394114"
 DESTINATION = "87391003"
+SEARCH_DAYS = 7
 
 
 def _station(value: str, uic: str) -> bool:
@@ -105,13 +106,14 @@ def _trip_matches(descriptor, trip, date):
 def build_board(schedule, updates, alerts, now: datetime, count=5):
     """Return schedule rows enriched only with fresh, unambiguous GTFS-RT data."""
     now = now.astimezone(PARIS)
+    latest = now.timestamp() + SEARCH_DAYS * 86400
     instances = {}
-    for offset in (-1, 0, 1):
+    for offset in range(-1, SEARCH_DAYS + 1):
         day = now.date() + timedelta(days=offset)
         for trip in schedule["trips"]:
             if _active(schedule, trip["service_id"], day):
                 scheduled = _service_time(day, trip["departure"])
-                if now.timestamp() - 10800 <= scheduled.timestamp() <= now.timestamp() + 86400:
+                if now.timestamp() - 10800 <= scheduled.timestamp() <= latest:
                     instances[(trip["number"], day.strftime("%Y%m%d"), scheduled.timestamp())] = (trip, scheduled)
     # The current GTFS can already omit cancelled/added trips. Preserve RT-only
     # trips when both Épernon and Paris plus an explicit departure are supplied.
@@ -188,7 +190,7 @@ def build_board(schedule, updates, alerts, now: datetime, count=5):
         elif expected:
             status = "🟢 À l’heure" if delay == 0 else "🟠 En avance"
         until = scheduled if cancelled else expected or scheduled
-        if not now.timestamp() <= until.timestamp() <= now.timestamp() + 86400:
+        if not now.timestamp() <= until.timestamp() <= latest:
             continue
         result.append({
             "numero": escape(number), "prevu": scheduled.strftime("%H:%M" if scheduled.date() == now.date() else "%d/%m %H:%M"),

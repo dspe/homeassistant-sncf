@@ -39,6 +39,8 @@ Le capteur reste **`sensor.sncf_epernon_paris`**, avec la liste dans l'attribut
 | ⚪ Horaire prévu | Aucune prévision temps réel exploitable pour ce départ |
 
 La carte affiche 5 trains par défaut, avec une actualisation toutes les 2 minutes.
+La recherche s'étend jusqu'à 7 jours pour compléter la liste quand les départs
+des prochaines 24 heures ne suffisent pas. La date est affichée pour les autres jours.
 Les options de l'intégration permettent de choisir 1 à 20 trains et un intervalle
 de 120 à 3 600 secondes.
 
@@ -73,7 +75,7 @@ ou en « Supprimé ». Les deux flux peuvent échouer indépendamment.
   Si plusieurs départs sont ambigus, aucune prévision n'est attribuée automatiquement.
 - Seuls les trains directs avec prise en charge autorisée à Épernon et descente
   autorisée à Montparnasse sont retenus. Les cars et correspondances sont exclus.
-- La recherche couvre les 24 prochaines heures, en conservant aussi les trains
+- La recherche couvre les 7 prochains jours, en conservant aussi les trains
   retardés dont l'heure prévue est passée depuis moins de 3 heures.
 - Les heures sont interprétées dans le fuseau Europe/Paris. L'heure du capteur
   indique la réception des données ; `temps_reel_actualise` indique la publication

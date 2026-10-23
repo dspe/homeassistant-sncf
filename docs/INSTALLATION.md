@@ -1,4 +1,4 @@
-# Installation de la version ouverte (0.2.0)
+# Installation de la version ouverte (0.2.1)
 
 Prérequis : Home Assistant Core 2026.10.0 ou supérieur, HACS et un accès Internet.
 **Aucun token n'est nécessaire**, ni celui du portail Open Data ni celui de Navitia.
@@ -50,7 +50,7 @@ peut rester en place. Le [guide historique](LEGACY_YAML.md) est conservé comme 
 
 ## Dépannage
 
-- **Le formulaire demande encore une clé** : vérifier la version 0.2.0 dans HACS,
+- **Le formulaire demande encore une clé** : vérifier la version 0.2.1 dans HACS,
   télécharger à nouveau la branche `main`, puis redémarrer Home Assistant.
 - **Impossible de charger les horaires publics** : vérifier l'accès réseau et les
   journaux de `custom_components.sncf_epernon`. Aucun token ne résoudra ce message.
@@ -58,7 +58,10 @@ peut rester en place. Le [guide historique](LEGACY_YAML.md) est conservé comme 
   trop ancien. Home Assistant réessaiera la connexion.
 - **Horaires prévus et avertissement sur le temps réel** : les horaires restent
   utilisables, mais l'un des flux n'a pas pu être récupéré ou est trop ancien.
-- **Aucun départ** : il peut ne pas y avoir de trains dans les 24 prochaines heures.
+- **Moins de cinq lignes** : dans les options de l'intégration, régler le nombre
+  de trains sur 5. Depuis la version 0.2.1, la recherche couvre jusqu'à 7 jours
+  pour compléter la liste ; la carte ne limite pas le nombre de lignes.
+- **Aucun départ** : il peut ne pas y avoir de trains dans les 7 prochains jours.
   Les adaptations ou travaux peuvent aussi supprimer des circulations du GTFS.
 - **Trains supprimés** : la suppression est explicitement fournie par les données.
   L'intégration ne la déduit pas de l'absence d'un train dans le temps réel.

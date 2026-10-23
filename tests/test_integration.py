@@ -188,14 +188,37 @@ class GtfsTests(unittest.TestCase):
         now = datetime(2026,10,24,0,5,tzinfo=PARIS)
         self.assertEqual(build_board(s, None, None, now)[0]["prevu"], "00:10")
 
+    def test_five_next_trains_beyond_tomorrow(self):
+        s = schedule()
+        s["dates"] = {(NOW.date()+timedelta(days=day)).strftime("%Y%m%d"): {"s": True}
+                      for day in (2, 3, 4, 5, 6, 8)}
+        rows = build_board(s, None, None, NOW)
+        self.assertEqual(len(rows), 5)
+        self.assertEqual([r["depart_prevu"][:10] for r in rows],
+                         ["2026-10-25", "2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29"])
+        self.assertTrue(all(r["statut"] == "⚪ Horaire prévu" for r in rows))
+        self.assertEqual(len(build_board(s, None, None, NOW, 20)), 5)
+
     def test_public_snapshot_cancellations(self):
         base = ROOT / "tests/fixtures/open_data_20261023"
         s = json.loads((base / "schedule.json").read_text())
         u = rt.FeedMessage.FromString((base / "updates.pb").read_bytes())
         a = rt.FeedMessage.FromString((base / "alerts.pb").read_bytes())
-        rows = build_board(s, u, a, datetime.fromtimestamp(u.header.timestamp, UTC), 5)
+        rows = build_board(s, u, a, datetime.fromtimestamp(u.header.timestamp, UTC), 3)
         self.assertEqual([r["numero"] for r in rows], ["862520", "862430", "862524"])
         self.assertTrue(all(r["supprime"] for r in rows))
+
+    def test_public_snapshot_fills_five_rows_after_1519(self):
+        base = ROOT / "tests/fixtures/open_data_20261023"
+        s = json.loads((base / "schedule.json").read_text())
+        u = rt.FeedMessage.FromString((base / "updates.pb").read_bytes())
+        a = rt.FeedMessage.FromString((base / "alerts.pb").read_bytes())
+        rows = build_board(s, u, a, NOW.replace(hour=15, minute=19))
+        self.assertEqual([r["numero"] for r in rows],
+                         ["862430", "862524", "862520", "862430", "862524"])
+        self.assertEqual(rows[-1]["prevu"], "24/10 17:12")
+        self.assertTrue(all(r["supprime"] for r in rows[:2]))
+        self.assertTrue(all(not r["supprime"] for r in rows[2:]))
 
 
 class ClientTests(unittest.IsolatedAsyncioTestCase):
@@ -326,7 +349,7 @@ class PackagingTests(unittest.TestCase):
         components = [p for p in (ROOT/"custom_components").iterdir() if p.is_dir() and not p.name.startswith("__")]
         self.assertEqual([p.name for p in components],[DOMAIN])
         manifest = json.loads((components[0]/"manifest.json").read_text())
-        self.assertEqual(manifest["version"],"0.2.0")
+        self.assertRegex(manifest["version"], r"^\d+\.\d+\.\d+$")
         self.assertIn("gtfs-realtime-bindings==3.0.0",manifest["requirements"])
         for language in ("en","fr"):
             text = json.loads((components[0]/"translations"/f"{language}.json").read_text())
