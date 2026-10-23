@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, ROUTE_ID, TITLE
 from .coordinator import SncfCoordinator
-from .departures import build_departures
+from .gtfs import build_board
 
 PARALLEL_UPDATES = 0
 
@@ -43,9 +43,13 @@ class SncfDeparturesSensor(CoordinatorEntity[SncfCoordinator], SensorEntity):
     def extra_state_attributes(self) -> dict:
         data = self.coordinator.data
         return {
-            "trains": build_departures(
-                data["planned"], data["live"], datetime.now(UTC), self.coordinator.train_count
+            "trains": build_board(
+                data["schedule"], data["updates"], data["alerts"], datetime.now(UTC), self.coordinator.train_count
             ),
+            "source": "SNCF Open Data — GTFS / GTFS-RT",
+            "avertissements": data["warnings"],
+            "horaires_actualises": data["schedule_updated_at"],
+            "temps_reel_actualise": data["realtime_updated_at"],
             "gare_depart": "Épernon",
             "destination": "Paris-Montparnasse",
         }

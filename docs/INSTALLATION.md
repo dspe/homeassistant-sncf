@@ -1,94 +1,68 @@
-# Installation via HACS
+# Installation de la version ouverte (0.2.0)
 
-Prérequis : Home Assistant Core 2026.10.0 ou supérieur, HACS et une clé API SNCF.
-Cette intégration a été testée avec le Core 2026.10.2 et des réponses simulées.
+Prérequis : Home Assistant Core 2026.10.0 ou supérieur, HACS et un accès Internet.
+**Aucun token n'est nécessaire**, ni celui du portail Open Data ni celui de Navitia.
 
-## Ajouter le dépôt
+## Si une ancienne version est installée
 
-1. Ouvrir HACS, puis le menu **⋮ → Dépôts personnalisés**.
-2. Indiquer `https://github.com/dspe/homeassistant-sncf`.
-3. Sélectionner la catégorie **Intégration** et ajouter le dépôt.
-4. Télécharger **SNCF Épernon Paris**.
-5. Redémarrer Home Assistant.
+1. Dans HACS, ouvrir **SNCF Épernon Paris**.
+2. Mettre à jour, ou utiliser **⋮ → Télécharger à nouveau** et choisir la branche
+   `main` si HACS ne propose pas encore la mise à jour.
+3. Redémarrer Home Assistant.
+4. Si l'intégration avait été configurée, elle migre automatiquement vers la
+   source ouverte en supprimant l'ancienne clé de sa configuration locale.
+5. Si l'ajout avait échoué sur « Clé refusée », reprendre l'ajout dans Appareils
+   et services : la nouvelle version ne présente plus de champ de clé.
 
-Le dépôt contient maintenant `custom_components/sncf_epernon/`, la structure
-attendue par HACS pour une intégration. Si une ancienne tentative affiche encore
-« Repository structure for main is not compliant », fermer et rouvrir HACS,
-puis refaire l'ajout avec l'URL ci-dessus. Au besoin, retirer l'entrée échouée
-de la liste des dépôts personnalisés avant de l'ajouter à nouveau.
+La liste des trains reste dans `sensor.sncf_epernon_paris`. Une carte déjà reliée
+à ce capteur reste compatible. Le nouveau YAML ajoute des avertissements utiles
+lorsqu'un flux temps réel est temporairement indisponible.
 
-## Configurer la SNCF
+## Nouvelle installation
 
-1. Demander une clé sur le
-   [formulaire officiel SNCF](https://numerique.sncf.com/startup/api/token-developpeur/).
-2. Dans **Paramètres → Appareils et services → Ajouter une intégration**,
+1. Dans **HACS → ⋮ → Dépôts personnalisés**, ajouter
+   `https://github.com/dspe/homeassistant-sncf`, catégorie **Intégration**.
+2. Télécharger **SNCF Épernon Paris**, puis redémarrer Home Assistant.
+3. Dans **Paramètres → Appareils et services → Ajouter une intégration**,
    rechercher **SNCF Épernon Paris**.
-3. Coller la clé API et valider. L'intégration teste l'accès avant d'enregistrer
-   la configuration.
-4. Vérifier dans **Outils de développement → États** que
-   `sensor.sncf_epernon_paris` est présent et possède un attribut `trains`.
+4. Valider le formulaire d'information. Le premier chargement télécharge les
+   horaires nationaux et peut prendre quelques secondes.
+5. Dans **Outils de développement → États**, rechercher
+   `sensor.sncf_epernon_paris` et son attribut `trains`.
 
-La clé est saisie dans un champ masqué et enregistrée localement par Home Assistant.
-Elle n'est pas envoyée à GitHub et n'est pas incluse dans les attributs du capteur.
-Le menu **Reconfigurer** permet de la remplacer ultérieurement.
+## Carte
 
-Les options de l'intégration permettent de choisir le nombre de trains (1 à 20)
-et l'intervalle d'actualisation (60 à 3 600 secondes). Les modifications rechargent
-l'intégration automatiquement.
+Installer **Flex Table Card** dans HACS, recharger le navigateur, puis ajouter une
+carte manuelle au tableau de bord avec le contenu de
+[dashboards/carte.yaml](../dashboards/carte.yaml).
 
-## Ajouter la carte
+Si le capteur porte un suffixe, adapter ses références dans le YAML de la carte.
+Les options de l'intégration règlent le nombre de trains et la fréquence de
+récupération. Elles rechargent automatiquement l'intégration.
 
-1. Installer **Flex Table Card** dans HACS et recharger le navigateur.
-2. Modifier le tableau de bord et ajouter une **carte manuelle**.
-3. Coller tout le contenu de [dashboards/carte.yaml](../dashboards/carte.yaml).
+## Ancien package YAML
 
-Le capteur utilise par défaut `sensor.sncf_epernon_paris`. Si Home Assistant lui
-attribue un suffixe, remplacer ses références dans le YAML de la carte.
-
-## Migration depuis la première version YAML
-
-Si vous aviez déjà installé `packages/sncf_epernon.yaml` :
-
-1. Retirer ce package du dossier de configuration de Home Assistant avant
-   d'activer la nouvelle intégration. Vérifier la configuration puis redémarrer.
-2. Installer et configurer l'intégration HACS comme ci-dessus.
-3. Remplacer l'ancienne carte par le nouveau YAML : le capteur utilisé passe de
-   `sensor.trains_epernon_paris` à `sensor.sncf_epernon_paris`.
-
-La clé `sncf_api_key` de `secrets.yaml` n'est plus utilisée par l'intégration HACS.
-Les autres packages peuvent continuer d'utiliser votre configuration de packages.
-Ne pas activer l'ancienne et la nouvelle versions en même temps : cela doublerait
-les appels SNCF. L'[ancien guide YAML](LEGACY_YAML.md) reste disponible comme référence.
+Si `packages/sncf_epernon.yaml` avait été copié dans Home Assistant, retirer ce
+package, vérifier la configuration et redémarrer avant d'activer l'intégration
+HACS. Le capteur de l'ancien package était `sensor.trains_epernon_paris` : remplacer
+l'ancienne carte par le nouveau YAML. Le reste de la configuration des packages
+peut rester en place. Le [guide historique](LEGACY_YAML.md) est conservé comme référence.
 
 ## Dépannage
 
-- **L'intégration n'apparaît pas dans Appareils et services** : redémarrer Home
-  Assistant après le téléchargement HACS, puis recharger le navigateur.
-- **Clé vide** : coller uniquement le token reçu de la SNCF, sans guillemets ni préfixe.
-- **HTTP 401** : l’API SNCF ne reconnaît pas la clé envoyée.
-- **HTTP 403** : l’API interdit l’accès aux données demandées ; ce refus ne prouve
-  pas que la clé est incorrecte. Vérifier son activation et ses droits auprès de la SNCF.
-- Pour isoler un problème de clé, ouvrir `https://api.sncf.com/v1/coverage/sncf`
-  dans une fenêtre privée. Dans la demande de connexion, utiliser la clé comme
-  identifiant et laisser le mot de passe vide. Une réponse contenant `regions`
-  confirme l’accès à cette couverture ; un refus permet de reproduire le problème
-  sans Home Assistant. Ne pas inclure la clé dans une URL partagée.
-- **Quota atteint** : attendre la réouverture du quota ou de la limite de débit ;
-  l'intégration espace les nouvelles tentatives lorsqu'un code 429 est reçu.
-- **Impossible de récupérer les données** : consulter les journaux de
-  `custom_components.sncf_epernon`. Un accès réseau, une erreur SNCF ou un
-  identifiant de gare non reconnu peuvent empêcher la récupération.
-- **Custom element doesn't exist: flex-table-card** : vérifier l'installation
-  de la carte dans HACS et recharger complètement le navigateur.
-- **Horaire prévu pour tous les trains** : l'API n'a pas confirmé le temps réel
-  pour les départs reçus. La carte ne les déclare pas automatiquement à l'heure.
+- **Le formulaire demande encore une clé** : vérifier la version 0.2.0 dans HACS,
+  télécharger à nouveau la branche `main`, puis redémarrer Home Assistant.
+- **Impossible de charger les horaires publics** : vérifier l'accès réseau et les
+  journaux de `custom_components.sncf_epernon`. Aucun token ne résoudra ce message.
+- **Capteur indisponible** : le GTFS n'a pas encore pu être chargé ou son cache est
+  trop ancien. Home Assistant réessaiera la connexion.
+- **Horaires prévus et avertissement sur le temps réel** : les horaires restent
+  utilisables, mais l'un des flux n'a pas pu être récupéré ou est trop ancien.
+- **Aucun départ** : il peut ne pas y avoir de trains dans les 24 prochaines heures.
+  Les adaptations ou travaux peuvent aussi supprimer des circulations du GTFS.
+- **Trains supprimés** : la suppression est explicitement fournie par les données.
+  L'intégration ne la déduit pas de l'absence d'un train dans le temps réel.
+- **Custom element doesn't exist: flex-table-card** : vérifier son installation
+  dans HACS et recharger complètement le navigateur.
 
-Les limites de couverture et les statuts sont détaillés dans le
-[README](../README.md#données-et-limites).
-
-## Références
-
-- [Structure des intégrations HACS](https://www.hacs.xyz/docs/publish/integration/)
-- [API SNCF](https://numerique.sncf.com/startup/api/)
-- [Documentation Navitia](https://doc.navitia.io/)
-- [Flex Table Card](https://github.com/custom-cards/flex-table-card)
+Les sources et les limites sont décrites dans le [README](../README.md).

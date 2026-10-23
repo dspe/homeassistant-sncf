@@ -37,11 +37,17 @@ cards:
       {% if states(entity) in ['unavailable', 'unknown'] %}
       🚆 **Épernon → Paris-Montparnasse**
 
-      ⚠️ Données SNCF indisponibles ou actualisation trop ancienne.
+      ⚠️ Capteur SNCF absent, en cours de chargement ou indisponible.
+
+      Vérifier **Paramètres → Appareils et services → SNCF Épernon Paris**.
       {% elif not state_attr(entity, 'trains') %}
       Aucun départ vers Paris trouvé dans les données reçues.
       {% else %}
       Actualisé à {{ as_timestamp(states(entity)) | timestamp_custom('%H:%M') }} · SNCF
 
+      {% for warning in state_attr(entity, 'avertissements') or [] %}
+      ⚠️ {{ warning }}
+
+      {% endfor %}
       ⚪ Horaire prévu : statut temps réel non confirmé.
       {% endif %}

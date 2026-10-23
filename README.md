@@ -1,83 +1,93 @@
-# SNCF Épernon Paris — intégration Home Assistant
+# SNCF Épernon Paris — Home Assistant / HACS
 
 ![Icône](custom_components/sncf_epernon/brand/icon.png)
 
-Les prochains trains directs d'Épernon vers Paris-Montparnasse dans Home Assistant,
-avec les horaires prévus, les horaires estimés, les retards et les suppressions
-annoncées par la SNCF.
+Les prochains trains directs d'Épernon vers Paris-Montparnasse : horaires prévus,
+prévisions, retards, suppressions explicites et messages de perturbation.
 
-**Installation via HACS et configuration depuis l'interface de Home Assistant.**
-Compatible avec Home Assistant Core **2026.10.0 ou supérieur**, testé avec
-**2026.10.2**. Une clé API SNCF gratuite est nécessaire.
+**Depuis la version 0.2.0, l'intégration utilise les flux ouverts SNCF et ne demande
+aucun token ni clé API.** Elle fonctionne sans le portail SNCF Numérique.
+Compatible avec Home Assistant Core **2026.10.0 ou supérieur**, testé sur **2026.10.2**.
 
-## Installer
+## Installation et mise à jour
 
 1. Dans **HACS → ⋮ → Dépôts personnalisés**, ajouter
    `https://github.com/dspe/homeassistant-sncf`, catégorie **Intégration**.
-2. Télécharger **SNCF Épernon Paris**, puis **redémarrer Home Assistant**.
-3. Dans **Paramètres → Appareils et services → Ajouter une intégration**,
-   rechercher **SNCF Épernon Paris**.
-4. Saisir votre [clé API SNCF](https://numerique.sncf.com/startup/api/token-developpeur/).
-5. Pour la carte, installer **Flex Table Card** dans HACS, puis coller
+2. Télécharger **SNCF Épernon Paris**, puis redémarrer Home Assistant.
+3. Ouvrir **Paramètres → Appareils et services → Ajouter une intégration**,
+   rechercher **SNCF Épernon Paris** et valider le formulaire sans clé.
+4. Installer **Flex Table Card** dans HACS et coller
    [dashboards/carte.yaml](dashboards/carte.yaml) dans une carte manuelle.
 
-Le capteur créé par défaut est **`sensor.sncf_epernon_paris`**. La liste est dans
-son attribut `trains`. En cas de nom déjà utilisé, adapter l'identifiant dans la
-carte à celui effectivement créé.
+Pour passer de la version 0.1.x à 0.2.0 : mettre à jour ou télécharger à nouveau
+l'intégration dans HACS, puis redémarrer Home Assistant. Une entrée existante est
+migrée automatiquement vers la source ouverte et sa clé obsolète est supprimée.
+Si l'ajout avait échoué avant la création de l'entrée, reprendre l'étape 3.
+Le capteur reste **`sensor.sncf_epernon_paris`**, avec la liste dans l'attribut
+`trains`. Vérifier son nom réel si Home Assistant lui a attribué un suffixe.
 
-Le [guide détaillé](docs/INSTALLATION.md) couvre l'installation, la migration
- depuis l'ancien package YAML et le dépannage.
+[Guide complet et dépannage](docs/INSTALLATION.md).
 
-## Affichage et réglages
+## Affichage
 
 | Statut | Signification |
 |---|---|
-| 🟢 À l'heure | Horaire confirmé dans les données temps réel reçues |
-| 🟠 +N min | Retard par rapport à l'heure prévue |
-| 🔴 Supprimé | Suppression explicitement annoncée pour ce départ |
-| 🟠 Perturbation | Alerte applicable sans statut plus précis |
-| ⚪ Horaire prévu | Confirmation temps réel non fournie |
+| 🟢 À l'heure | Le flux fournit explicitement une prévision identique à l'horaire |
+| 🟠 +N min | Retard calculé depuis une prévision de départ à Épernon |
+| 🔴 Supprimé | Annulation du train ou suppression de l'arrêt de départ explicitement annoncée |
+| 🟠 Perturbation | Message applicable ou arrêt à Paris non desservi |
+| ⚪ Horaire prévu | Aucune prévision temps réel exploitable pour ce départ |
 
-L'intégration affiche **5 trains** et actualise toutes les **60 secondes** par
-défaut. Dans les options de l'intégration, ces valeurs peuvent être réglées de
-1 à 20 trains et de 60 à 3 600 secondes. Le menu **Reconfigurer** permet de changer
-la clé. Une clé refusée déclenche une demande de réauthentification.
+La carte affiche 5 trains par défaut, avec une actualisation toutes les 2 minutes.
+Les options de l'intégration permettent de choisir 1 à 20 trains et un intervalle
+de 120 à 3 600 secondes.
 
-La clé est stockée par Home Assistant dans la configuration de l'intégration ;
-aucune modification de `secrets.yaml` n'est nécessaire avec cette version HACS.
+## Sources ouvertes et couverture
 
-## Données et limites
+L'intégration télécharge le [GTFS SNCF théorique et les flux GTFS-RT](https://transport.data.gouv.fr/datasets/horaires-sncf?locale=fr)
+Trip Updates et Service Alerts. La présence d'Épernon, des trains vers Paris et de
+suppressions a été vérifiée sur les fichiers réels reçus le **23 octobre 2026**.
+Le [rapport de vérification](docs/OPEN_DATA_VALIDATION.md) décrit les observations.
 
-- Deux appels SNCF par actualisation : horaires prévus et temps réel. À 60 secondes,
-  environ 2 880 appels par jour, hors configuration, redémarrages et actualisations
-  manuelles. Les autres usages de la clé partagent le quota SNCF.
-- Les suppressions sont recherchées dans les perturbations explicitement liées
-  au départ, avec vérification de leurs périodes et calendriers. L'absence d'un
-  train dans le flux temps réel n'est jamais une preuve de suppression.
-- Les trains supprimés restent visibles jusqu'à leur heure prévue. Les trains
-  retardés restent visibles jusqu'à l'heure estimée reçue.
-- Les horaires sont interprétés dans le fuseau Europe/Paris. Les départs du
-  lendemain incluent leur date. La liste est triée par heure prévue.
-- La recherche couvre les 3 dernières heures et les 24 prochaines heures, avec
-  au maximum 80 départs par réponse avant filtrage vers Paris. Un retard de plus
-  de 3 heures ou une réponse tronquée peut limiter les résultats.
-- La liaison est fixe : Épernon → Paris-Montparnasse, trains directs uniquement,
-  sans cars de substitution ni itinéraires avec correspondance.
-- Une erreur de récupération rend le capteur indisponible. Le timestamp du capteur
-  indique la réception de l'API, pas l'âge de l'information à la source.
-- Les tests utilisent des réponses simulées : la disponibilité du temps réel,
-  les identifiants et la publication des suppressions restent à confirmer avec
-  votre clé et les données réelles d'Épernon.
+Le GTFS national est téléchargé au premier démarrage, puis toutes les 12 heures.
+Seuls les horaires pertinents sont conservés dans un cache local persistant. Le
+fichier compressé pesait environ 5,3 Mo lors de la vérification. En cas d'échec de
+son actualisation, un cache de moins de 48 heures est réutilisé avec avertissement.
+Les prévisions et alertes nationales sont téléchargées à chaque actualisation.
 
-## Maintenance
+Les flux temps réel sont rejetés si leur date de publication remonte à plus de
+10 minutes. Lorsqu'un flux échoue, la carte garde les horaires prévus et affiche
+un avertissement ; elle ne transforme jamais l'absence d'information en « À l'heure »
+ou en « Supprimé ». Les deux flux peuvent échouer indépendamment.
 
-Le code installable est dans `custom_components/sncf_epernon/`. HACS gère ses
-mises à jour ; après une mise à jour, redémarrer Home Assistant. Les évolutions
-du YAML de la carte doivent être reportées dans le tableau de bord.
+## Limites
 
-Les fichiers `packages/` et `dashboards/carte-legacy.yaml` conservent l'ancienne
-version YAML comme référence. Ils ne sont pas installés par HACS. Ne pas activer
-les deux versions simultanément.
+- La SNCF ne garantit pas une couverture temps réel exhaustive des TER. La
+  disponibilité constatée à Épernon ne garantit pas tous les trains tous les jours.
+- La prévision est essentiellement publiée à proximité de la circulation. Les
+  trains plus lointains peuvent rester en horaire prévu ou porter une perturbation.
+- Les horaires théoriques peuvent déjà intégrer des adaptations connues et omettre
+  certains trains annulés. Un départ absent du GTFS est réintroduit seulement si
+  le flux temps réel donne son parcours Épernon → Paris et son horaire de départ.
+- Le rapprochement utilise le numéro commercial, la date de service et les arrêts.
+  Si plusieurs départs sont ambigus, aucune prévision n'est attribuée automatiquement.
+- Seuls les trains directs avec prise en charge autorisée à Épernon et descente
+  autorisée à Montparnasse sont retenus. Les cars et correspondances sont exclus.
+- La recherche couvre les 24 prochaines heures, en conservant aussi les trains
+  retardés dont l'heure prévue est passée depuis moins de 3 heures.
+- Les heures sont interprétées dans le fuseau Europe/Paris. L'heure du capteur
+  indique la réception des données ; `temps_reel_actualise` indique la publication
+  du flux de prévisions. Les messages d'incident sont accessibles dans chaque train.
+
+Les données sont fournies par SNCF Voyageurs, via le portail Open Data et le Point
+d'Accès National transport.data.gouv.fr. Ce projet est indépendant de la SNCF.
+
+## Développement
+
+Le code installable est dans `custom_components/sncf_epernon/`. HACS gère ses mises
+à jour ; le YAML de la carte doit être reporté dans le tableau de bord s'il change.
+Les anciens fichiers `packages/` sont conservés comme référence et ne sont pas
+installés par HACS. Ne pas activer l'ancien package YAML simultanément.
 
 Avec Python **3.14.2 ou supérieur** :
 
@@ -89,8 +99,11 @@ python -m unittest discover -s tests -p 'test_*.py' -v
 python tests/verify_templates.py
 ```
 
-Les tests exercent le traitement des départs et les classes de Home Assistant
-2026.10.2, avec simulation de la SNCF. GitHub vérifie aussi la structure HACS et
-les manifestes avec hassfest. La validation HACS ignore uniquement les métadonnées
-de catalogue (description, topics et licence) ; elle vérifie les fichiers
-installables, le manifeste HACS et l'icône.
+Les tests couvrent le GTFS, les dates de service, les prévisions, les annulations,
+les identifiants réellement publiés, le cache, les pannes partielles, la migration
+et les classes de Home Assistant 2026.10.2. Un extrait des flux publics réels du
+23 octobre 2026 sert aussi de régression. Aucun test ne demande de secret.
+
+GitHub vérifie les tests, la structure HACS et les manifestes avec hassfest.
+La validation HACS ignore seulement les métadonnées de catalogue (description,
+topics et licence).

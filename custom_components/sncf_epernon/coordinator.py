@@ -1,36 +1,27 @@
-"""Coordinate SNCF polling."""
+"""Coordinate downloads of the public SNCF data."""
 
 from datetime import timedelta
 import logging
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-from .api import InvalidAuth, RateLimited, SncfClient, SncfError
 from .const import CONF_COUNT, CONF_INTERVAL, DEFAULT_COUNT, DEFAULT_INTERVAL, DOMAIN
+from .open_data import OpenDataClient, OpenDataError
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class SncfCoordinator(DataUpdateCoordinator[dict]):
-    """Keep one pair of SNCF requests per polling interval."""
+    """Refresh the public feeds, retaining theoretical schedules on RT failure."""
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, client: SncfClient) -> None:
-        super().__init__(
-            hass, _LOGGER, config_entry=entry, name=DOMAIN,
-            update_interval=timedelta(seconds=entry.options.get(CONF_INTERVAL, DEFAULT_INTERVAL)),
-        )
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, client: OpenDataClient) -> None:
+        super().__init__(hass, _LOGGER, config_entry=entry, name=DOMAIN,
+            update_interval=timedelta(seconds=max(DEFAULT_INTERVAL, entry.options.get(CONF_INTERVAL, DEFAULT_INTERVAL))))
         self.client = client
         self.train_count = entry.options.get(CONF_COUNT, DEFAULT_COUNT)
 
     async def _async_update_data(self) -> dict:
         try:
             return await self.client.async_fetch()
-        except InvalidAuth as err:
-            raise ConfigEntryAuthFailed("La clé API SNCF a été refusée") from err
-        except RateLimited as err:
-            raise UpdateFailed("Quota SNCF atteint", retry_after=err.retry_after) from err
-        except SncfError as err:
+        except OpenDataError as err:
             raise UpdateFailed(str(err)) from err

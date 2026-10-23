@@ -4,45 +4,27 @@
     "step": {
       "user": {
         "title": "Épernon → Paris-Montparnasse",
-        "description": "Show direct departures from Épernon to Paris-Montparnasse. Enter your SNCF API key.",
-        "data": {
-          "api_key": "SNCF API key"
-        }
-      },
-      "reauth_confirm": {
-        "title": "Épernon → Paris-Montparnasse",
-        "description": "Show direct departures from Épernon to Paris-Montparnasse. Enter your SNCF API key.",
-        "data": {
-          "api_key": "SNCF API key"
-        }
+        "description": "Schedules and realtime information are downloaded from public SNCF feeds. No token or API key is needed. Submit to test the connection."
       },
       "reconfigure": {
         "title": "Épernon → Paris-Montparnasse",
-        "description": "Show direct departures from Épernon to Paris-Montparnasse. Enter your SNCF API key.",
-        "data": {
-          "api_key": "SNCF API key"
-        }
+        "description": "Schedules and realtime information are downloaded from public SNCF feeds. No token or API key is needed. Submit to test the connection."
       }
     },
     "error": {
-      "invalid_auth": "SNCF does not recognize this key (HTTP 401). Enter only the token you received, without quotes or a prefix.",
-      "cannot_connect": "Cannot retrieve SNCF data.",
-      "rate_limited": "SNCF rate limit reached. Try again later.",
-      "missing_api_key": "Enter your SNCF API key.",
-      "access_denied": "SNCF denied access to the requested data (HTTP 403). Check your key permissions or activation with SNCF."
+      "cannot_connect": "Cannot load the public SNCF schedule. Please try again later."
     },
     "abort": {
       "already_configured": "This route is already configured.",
-      "reauth_successful": "API key updated.",
-      "reconfigure_successful": "Configuration updated."
+      "reconfigure_successful": "Open data source enabled."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Departure settings",
+        "title": "Settings",
         "data": {
-          "update_interval": "Update interval (seconds, minimum 60)",
+          "update_interval": "Update interval (seconds, minimum 120)",
           "train_count": "Train count (1 to 20)"
         }
       }
