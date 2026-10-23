@@ -1,0 +1,48 @@
+# Installer « flex-table-card » dans HACS, puis coller ceci dans une carte manuelle.
+type: vertical-stack
+cards:
+  - type: conditional
+    conditions:
+      - entity: sensor.trains_epernon_paris
+        state_not: unavailable
+      - entity: sensor.trains_epernon_paris
+        state_not: unknown
+    card:
+      type: custom:flex-table-card
+      title: Épernon → Paris-Montparnasse
+      entities:
+        include: sensor.trains_epernon_paris
+      clickable: false
+      max_rows: 5
+      strict: true
+      columns:
+        - name: Prévu
+          data: trains
+          modify: x.prevu
+        - name: Estimé
+          data: trains
+          modify: x.estime
+        - name: Train
+          data: trains
+          modify: x.numero
+        - name: Statut
+          data: trains
+          modify: x.statut
+      css:
+        table+: "width: 100%;"
+        th+: "text-align: left; padding: 10px 6px;"
+        td+: "padding: 12px 6px; white-space: nowrap;"
+  - type: markdown
+    content: >-
+      {% set entity = 'sensor.trains_epernon_paris' %}
+      {% if states(entity) in ['unavailable', 'unknown'] %}
+      🚆 **Épernon → Paris-Montparnasse**
+
+      ⚠️ Données SNCF indisponibles ou actualisation trop ancienne.
+      {% elif not state_attr(entity, 'trains') %}
+      Aucun départ vers Paris trouvé dans les données reçues.
+      {% else %}
+      Actualisé à {{ as_timestamp(states(entity)) | timestamp_custom('%H:%M') }} · SNCF
+
+      ⚪ Horaire prévu : statut temps réel non confirmé.
+      {% endif %}

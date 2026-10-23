@@ -1,113 +1,86 @@
-# Carte Épernon → Paris-Montparnasse
+# Installation via HACS
 
-Cette configuration prépare une carte affichant les cinq prochains départs directs
-en train vers Paris-Montparnasse. Elle associe les horaires prévus, les horaires
-temps réel et les perturbations SNCF. Les tests fonctionnent hors ligne sur des exemples. La connexion réelle à la SNCF
-reste à valider avec une clé API active.
+Prérequis : Home Assistant Core 2026.10.0 ou supérieur, HACS et une clé API SNCF.
+Cette intégration a été testée avec le Core 2026.10.2 et des réponses simulées.
 
-## Installation
+## Ajouter le dépôt
 
-1. Dans **HACS**, chercher et installer **Flex Table Card** (`flex-table-card`).
-   [Dépôt de la carte](https://github.com/custom-cards/flex-table-card).
-   Recharger ensuite le navigateur de Home Assistant.
-2. Demander une clé gratuite sur le
+1. Ouvrir HACS, puis le menu **⋮ → Dépôts personnalisés**.
+2. Indiquer `https://github.com/dspe/homeassistant-sncf`.
+3. Sélectionner la catégorie **Intégration** et ajouter le dépôt.
+4. Télécharger **SNCF Épernon Paris**.
+5. Redémarrer Home Assistant.
+
+Le dépôt contient maintenant `custom_components/sncf_epernon/`, la structure
+attendue par HACS pour une intégration. Si une ancienne tentative affiche encore
+« Repository structure for main is not compliant », fermer et rouvrir HACS,
+puis refaire l'ajout avec l'URL ci-dessus. Au besoin, retirer l'entrée échouée
+de la liste des dépôts personnalisés avant de l'ajouter à nouveau.
+
+## Configurer la SNCF
+
+1. Demander une clé sur le
    [formulaire officiel SNCF](https://numerique.sncf.com/startup/api/token-developpeur/).
-   Ajouter dans le fichier `secrets.yaml` de Home Assistant :
+2. Dans **Paramètres → Appareils et services → Ajouter une intégration**,
+   rechercher **SNCF Épernon Paris**.
+3. Coller la clé API et valider. L'intégration teste l'accès avant d'enregistrer
+   la configuration.
+4. Vérifier dans **Outils de développement → États** que
+   `sensor.sncf_epernon_paris` est présent et possède un attribut `trains`.
 
-   ```yaml
-   sncf_api_key: "VOTRE_CLE_SNCF"
-   ```
+La clé est saisie dans un champ masqué et enregistrée localement par Home Assistant.
+Elle n'est pas envoyée à GitHub et n'est pas incluse dans les attributs du capteur.
+Le menu **Reconfigurer** permet de la remplacer ultérieurement.
 
-3. Créer le dossier `packages` dans le dossier de configuration de Home Assistant,
-   puis y copier le fichier `packages/sncf_epernon.yaml` de ce dépôt.
-4. Dans `configuration.yaml`, activer les packages :
+Les options de l'intégration permettent de choisir le nombre de trains (1 à 20)
+et l'intervalle d'actualisation (60 à 3 600 secondes). Les modifications rechargent
+l'intégration automatiquement.
 
-   ```yaml
-   homeassistant:
-     packages: !include_dir_named packages
-   ```
+## Ajouter la carte
 
-   Si `homeassistant:` existe déjà, ajouter uniquement la ligne `packages:` à
-   l'intérieur. Si les packages sont déjà configurés, conserver leur configuration
-   et adapter l'emplacement du fichier. Ne pas créer de deuxième clé identique.
-   Le fichier fourni utilise le format `!include_dir_named`, pas
-   `!include_dir_merge_named`.
-5. Vérifier la configuration dans **Outils de développement → YAML**, puis
-   redémarrer Home Assistant. Le fuseau horaire de Home Assistant doit être
-   **Europe/Paris**, car les horaires SNCF de cette configuration sont locaux.
-6. Dans **Outils de développement → États**, vérifier la présence de :
-   - `sensor.sncf_epernon_prevu` ;
-   - `sensor.sncf_epernon_temps_reel` ;
-   - `sensor.trains_epernon_paris`, dont l'attribut `trains` contient la liste.
+1. Installer **Flex Table Card** dans HACS et recharger le navigateur.
+2. Modifier le tableau de bord et ajouter une **carte manuelle**.
+3. Coller tout le contenu de [dashboards/carte.yaml](../dashboards/carte.yaml).
 
-   Les noms peuvent recevoir un suffixe si des entités du même nom existent déjà.
-   Dans ce cas, adapter leurs références dans les deux fichiers YAML.
-7. Modifier le tableau de bord, ajouter une **carte manuelle**, puis y coller
-   tout le contenu de `dashboards/carte.yaml`.
+Le capteur utilise par défaut `sensor.sncf_epernon_paris`. Si Home Assistant lui
+attribue un suffixe, remplacer ses références dans le YAML de la carte.
 
-## Affichage
+## Migration depuis la première version YAML
 
-Exemple fictif, uniquement pour illustrer le rendu :
+Si vous aviez déjà installé `packages/sncf_epernon.yaml` :
 
-| Prévu | Estimé | Train | Statut |
-|---|---|---|---|
-| 07:05 | 07:05 | 862406 | 🟢 À l'heure |
-| 07:22 | 07:34 | 862408 | 🟠 +12 min |
-| 07:34 | — | 862410 | 🔴 Supprimé |
-| 07:52 | — | 862462 | ⚪ Horaire prévu |
+1. Retirer ce package du dossier de configuration de Home Assistant avant
+   d'activer la nouvelle intégration. Vérifier la configuration puis redémarrer.
+2. Installer et configurer l'intégration HACS comme ci-dessus.
+3. Remplacer l'ancienne carte par le nouveau YAML : le capteur utilisé passe de
+   `sensor.trains_epernon_paris` à `sensor.sncf_epernon_paris`.
 
-Une perturbation sans statut suffisamment précis est indiquée par
-**🟠 Perturbation**. La liste est triée par heure prévue pour conserver les trains
-supprimés à leur place. Les départs du lendemain incluent leur date.
-
-## Fonctionnement et limites
-
-- Actualisation toutes les 60 secondes : deux appels par minute, soit environ
-  2 880 par jour hors redémarrages et actualisations manuelles. Le quota publié
-  par la SNCF est de 5 000 appels par jour pour la formule gratuite ; les autres
-  usages de votre clé partagent ce quota.
-- Une suppression est affichée lorsqu'une perturbation liée au départ l'indique
-  explicitement pendant la période concernée. L'absence d'un train dans le flux
-  temps réel n'est jamais considérée comme une preuve de suppression.
-- Les périodes, jours de semaine et créneaux horaires des perturbations sont
-  vérifiés pour la date et l'heure prévue du train.
-- « À l'heure » nécessite un indicateur de données temps réel pour ce départ.
-  Sans confirmation, la carte affiche « Horaire prévu ».
-- La recherche couvre les trois dernières heures et les 24 prochaines heures,
-  avec au maximum 80 départs par réponse avant filtrage vers Paris. Un retard
-  supérieur à trois heures peut donc sortir de la recherche ; une réponse tronquée
-  peut limiter les départs disponibles.
-- Les trains sont rapprochés par numéro et date/heure prévue. Ce rapprochement
-  et les champs temps réel devront être vérifiés avec une réponse réelle de
-  votre clé API pour Épernon.
-- Les données sont masquées si une récupération échoue ou si la dernière
-  récupération réussie remonte à plus de trois minutes. L'heure d'actualisation
-  indique la réception de l'API, pas l'âge de l'information à la source.
-- La configuration filtre les destinations contenant « Paris » et « Montparnasse »
-  et les modes contenant « train ». Elle ne propose pas les cars de substitution,
-  ni les itinéraires avec correspondance.
-- Les suppressions dépendent de leur publication par la SNCF. La carte ne peut
-  pas afficher une information absente du flux.
+La clé `sncf_api_key` de `secrets.yaml` n'est plus utilisée par l'intégration HACS.
+Les autres packages peuvent continuer d'utiliser votre configuration de packages.
+Ne pas activer l'ancienne et la nouvelle versions en même temps : cela doublerait
+les appels SNCF. L'[ancien guide YAML](LEGACY_YAML.md) reste disponible comme référence.
 
 ## Dépannage
 
-- `401` / `403` dans les journaux : vérifier la clé et son activation.
-- `429` : quota ou limitation de débit de l'API.
-- `404` : vérifier l'identifiant d'Épernon avec le service
-  `https://api.sncf.com/v1/coverage/sncf/places?q=Epernon` en utilisant votre clé.
-  L'identifiant configuré est `stop_area:SNCF:87394114` ; il reste à confirmer
-  avec votre accès à l'API.
-- « Custom element doesn't exist: flex-table-card » : vérifier l'installation
-  HACS et recharger complètement le navigateur.
-- Tous les trains sont en « Horaire prévu » : examiner l'attribut `departures`
-  du capteur temps réel pour vérifier les indicateurs réellement fournis par l'API.
+- **L'intégration n'apparaît pas dans Appareils et services** : redémarrer Home
+  Assistant après le téléchargement HACS, puis recharger le navigateur.
+- **Clé API refusée** : vérifier la clé et son activation auprès de la SNCF.
+- **Quota atteint** : attendre la réouverture du quota ou de la limite de débit ;
+  l'intégration espace les nouvelles tentatives lorsqu'un code 429 est reçu.
+- **Impossible de récupérer les données** : consulter les journaux de
+  `custom_components.sncf_epernon`. Un accès réseau, une erreur SNCF ou un
+  identifiant de gare non reconnu peuvent empêcher la récupération.
+- **Custom element doesn't exist: flex-table-card** : vérifier l'installation
+  de la carte dans HACS et recharger complètement le navigateur.
+- **Horaire prévu pour tous les trains** : l'API n'a pas confirmé le temps réel
+  pour les départs reçus. La carte ne les déclare pas automatiquement à l'heure.
+
+Les limites de couverture et les statuts sont détaillés dans le
+[README](../README.md#données-et-limites).
 
 ## Références
 
-- [API SNCF et accès gratuit](https://numerique.sncf.com/startup/api/)
-- [FAQ SNCF : authentification et couverture temps réel](https://numerique.sncf.com/faq/api/)
-- [Départs de la gare d'Épernon sur TER SNCF](https://www.ter.sncf.com/centre-val-de-loire/se-deplacer/prochains-departs/epernon-87394114)
-- [Documentation Navitia : départs et perturbations](https://doc.navitia.io/)
-- [Intégration REST Home Assistant](https://www.home-assistant.io/integrations/rest/)
-- [Packages Home Assistant](https://www.home-assistant.io/docs/configuration/packages/)
-- [Documentation Flex Table Card](https://github.com/custom-cards/flex-table-card)
+- [Structure des intégrations HACS](https://www.hacs.xyz/docs/publish/integration/)
+- [API SNCF](https://numerique.sncf.com/startup/api/)
+- [Documentation Navitia](https://doc.navitia.io/)
+- [Flex Table Card](https://github.com/custom-cards/flex-table-card)

@@ -1,0 +1,49 @@
+{
+  "title": "SNCF Épernon Paris",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Épernon → Paris-Montparnasse",
+        "description": "Show direct departures from Épernon to Paris-Montparnasse. Enter your SNCF API key.",
+        "data": {
+          "api_key": "SNCF API key"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Épernon → Paris-Montparnasse",
+        "description": "Show direct departures from Épernon to Paris-Montparnasse. Enter your SNCF API key.",
+        "data": {
+          "api_key": "SNCF API key"
+        }
+      },
+      "reconfigure": {
+        "title": "Épernon → Paris-Montparnasse",
+        "description": "Show direct departures from Épernon to Paris-Montparnasse. Enter your SNCF API key.",
+        "data": {
+          "api_key": "SNCF API key"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid or empty API key.",
+      "cannot_connect": "Cannot retrieve SNCF data.",
+      "rate_limited": "SNCF rate limit reached. Try again later."
+    },
+    "abort": {
+      "already_configured": "This route is already configured.",
+      "reauth_successful": "API key updated.",
+      "reconfigure_successful": "Configuration updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Departure settings",
+        "data": {
+          "update_interval": "Update interval (seconds, minimum 60)",
+          "train_count": "Train count (1 to 20)"
+        }
+      }
+    }
+  }
+}

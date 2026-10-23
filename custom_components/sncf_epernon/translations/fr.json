@@ -1,0 +1,49 @@
+{
+  "title": "SNCF Épernon Paris",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Épernon → Paris-Montparnasse",
+        "description": "Affiche les départs directs d’Épernon vers Paris-Montparnasse. Saisissez votre clé API SNCF.",
+        "data": {
+          "api_key": "Clé API SNCF"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Épernon → Paris-Montparnasse",
+        "description": "Affiche les départs directs d’Épernon vers Paris-Montparnasse. Saisissez votre clé API SNCF.",
+        "data": {
+          "api_key": "Clé API SNCF"
+        }
+      },
+      "reconfigure": {
+        "title": "Épernon → Paris-Montparnasse",
+        "description": "Affiche les départs directs d’Épernon vers Paris-Montparnasse. Saisissez votre clé API SNCF.",
+        "data": {
+          "api_key": "Clé API SNCF"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Clé API refusée ou vide.",
+      "cannot_connect": "Impossible de récupérer les données SNCF.",
+      "rate_limited": "Quota SNCF atteint. Réessayez plus tard."
+    },
+    "abort": {
+      "already_configured": "Ce trajet est déjà configuré.",
+      "reauth_successful": "Clé mise à jour.",
+      "reconfigure_successful": "Configuration mise à jour."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Réglages des départs",
+        "data": {
+          "update_interval": "Actualisation (secondes, minimum 60)",
+          "train_count": "Nombre de trains (1 à 20)"
+        }
+      }
+    }
+  }
+}

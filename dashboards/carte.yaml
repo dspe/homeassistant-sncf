@@ -3,17 +3,16 @@ type: vertical-stack
 cards:
   - type: conditional
     conditions:
-      - entity: sensor.trains_epernon_paris
+      - entity: sensor.sncf_epernon_paris
         state_not: unavailable
-      - entity: sensor.trains_epernon_paris
+      - entity: sensor.sncf_epernon_paris
         state_not: unknown
     card:
       type: custom:flex-table-card
       title: Épernon → Paris-Montparnasse
       entities:
-        include: sensor.trains_epernon_paris
+        include: sensor.sncf_epernon_paris
       clickable: false
-      max_rows: 5
       strict: true
       columns:
         - name: Prévu
@@ -34,7 +33,7 @@ cards:
         td+: "padding: 12px 6px; white-space: nowrap;"
   - type: markdown
     content: >-
-      {% set entity = 'sensor.trains_epernon_paris' %}
+      {% set entity = 'sensor.sncf_epernon_paris' %}
       {% if states(entity) in ['unavailable', 'unknown'] %}
       🚆 **Épernon → Paris-Montparnasse**
 

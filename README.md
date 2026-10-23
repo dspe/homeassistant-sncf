@@ -1,27 +1,34 @@
-# Home Assistant — SNCF Épernon → Paris
+# SNCF Épernon Paris — intégration Home Assistant
 
-Configuration Home Assistant pour afficher les cinq prochains trains directs
-d'Épernon vers Paris-Montparnasse, avec les horaires prévus, les horaires estimés,
-les retards et les suppressions annoncées par la SNCF.
+![Icône](custom_components/sncf_epernon/brand/icon.png)
 
-Le dépôt contient un **package YAML Home Assistant** et la configuration d'une
-**Flex Table Card**, disponible dans HACS. Le package s'installe dans le dossier
-`packages` de Home Assistant ; ce dépôt n'est pas une intégration HACS Python.
+Les prochains trains directs d'Épernon vers Paris-Montparnasse dans Home Assistant,
+avec les horaires prévus, les horaires estimés, les retards et les suppressions
+annoncées par la SNCF.
 
-## Installation
+**Installation via HACS et configuration depuis l'interface de Home Assistant.**
+Compatible avec Home Assistant Core **2026.10.0 ou supérieur**, testé avec
+**2026.10.2**. Une clé API SNCF gratuite est nécessaire.
 
-Suivre le [guide d'installation](docs/INSTALLATION.md).
+## Installer
 
-1. Installer **Flex Table Card** dans HACS.
-2. Obtenir une [clé API SNCF gratuite](https://numerique.sncf.com/startup/api/token-developpeur/).
-3. Ajouter la clé à votre `secrets.yaml` local, comme dans
-   [l'exemple](examples/secrets.yaml.example).
-4. Copier [le package](packages/sncf_epernon.yaml) dans le dossier `packages`
-   de Home Assistant et activer le chargement des packages.
-5. Vérifier la configuration, redémarrer Home Assistant, puis ajouter
-   [la carte](dashboards/carte.yaml) au tableau de bord.
+1. Dans **HACS → ⋮ → Dépôts personnalisés**, ajouter
+   `https://github.com/dspe/homeassistant-sncf`, catégorie **Intégration**.
+2. Télécharger **SNCF Épernon Paris**, puis **redémarrer Home Assistant**.
+3. Dans **Paramètres → Appareils et services → Ajouter une intégration**,
+   rechercher **SNCF Épernon Paris**.
+4. Saisir votre [clé API SNCF](https://numerique.sncf.com/startup/api/token-developpeur/).
+5. Pour la carte, installer **Flex Table Card** dans HACS, puis coller
+   [dashboards/carte.yaml](dashboards/carte.yaml) dans une carte manuelle.
 
-## Statuts affichés
+Le capteur créé par défaut est **`sensor.sncf_epernon_paris`**. La liste est dans
+son attribut `trains`. En cas de nom déjà utilisé, adapter l'identifiant dans la
+carte à celui effectivement créé.
+
+Le [guide détaillé](docs/INSTALLATION.md) couvre l'installation, la migration
+ depuis l'ancien package YAML et le dépannage.
+
+## Affichage et réglages
 
 | Statut | Signification |
 |---|---|
@@ -31,55 +38,59 @@ Suivre le [guide d'installation](docs/INSTALLATION.md).
 | 🟠 Perturbation | Alerte applicable sans statut plus précis |
 | ⚪ Horaire prévu | Confirmation temps réel non fournie |
 
-Les appels sont effectués toutes les 60 secondes. Une réponse en erreur ou trop
-ancienne rend la carte indisponible. Les trains supprimés sont conservés dans la
-liste jusqu'à leur heure de départ prévue. Leur absence du flux temps réel ne
-suffit jamais à les déclarer supprimés.
+L'intégration affiche **5 trains** et actualise toutes les **60 secondes** par
+défaut. Dans les options de l'intégration, ces valeurs peuvent être réglées de
+1 à 20 trains et de 60 à 3 600 secondes. Le menu **Reconfigurer** permet de changer
+la clé. Une clé refusée déclenche une demande de réauthentification.
 
-Les identifiants de gare et les champs renvoyés restent à confirmer avec une
-réponse authentifiée de l'API SNCF pour Épernon. Les limites et le dépannage sont
-décrits dans le [guide](docs/INSTALLATION.md#fonctionnement-et-limites).
+La clé est stockée par Home Assistant dans la configuration de l'intégration ;
+aucune modification de `secrets.yaml` n'est nécessaire avec cette version HACS.
 
-## Organisation du dépôt
+## Données et limites
 
-```text
-packages/sncf_epernon.yaml       Données SNCF et préparation de la liste
-dashboards/carte.yaml            Carte du tableau de bord
-examples/secrets.yaml.example    Exemple sans clé réelle
-docs/INSTALLATION.md             Installation et dépannage
-tests/verify_templates.py        Régressions hors ligne
-.github/workflows/validate.yml   Validation automatique sur GitHub
-```
+- Deux appels SNCF par actualisation : horaires prévus et temps réel. À 60 secondes,
+  environ 2 880 appels par jour, hors configuration, redémarrages et actualisations
+  manuelles. Les autres usages de la clé partagent le quota SNCF.
+- Les suppressions sont recherchées dans les perturbations explicitement liées
+  au départ, avec vérification de leurs périodes et calendriers. L'absence d'un
+  train dans le flux temps réel n'est jamais une preuve de suppression.
+- Les trains supprimés restent visibles jusqu'à leur heure prévue. Les trains
+  retardés restent visibles jusqu'à l'heure estimée reçue.
+- Les horaires sont interprétés dans le fuseau Europe/Paris. Les départs du
+  lendemain incluent leur date. La liste est triée par heure prévue.
+- La recherche couvre les 3 dernières heures et les 24 prochaines heures, avec
+  au maximum 80 départs par réponse avant filtrage vers Paris. Un retard de plus
+  de 3 heures ou une réponse tronquée peut limiter les résultats.
+- La liaison est fixe : Épernon → Paris-Montparnasse, trains directs uniquement,
+  sans cars de substitution ni itinéraires avec correspondance.
+- Une erreur de récupération rend le capteur indisponible. Le timestamp du capteur
+  indique la réception de l'API, pas l'âge de l'information à la source.
+- Les tests utilisent des réponses simulées : la disponibilité du temps réel,
+  les identifiants et la publication des suppressions restent à confirmer avec
+  votre clé et les données réelles d'Épernon.
 
 ## Maintenance
 
-Modifier le package et la carte dans ce dépôt. Après validation des modifications,
-reporter les fichiers concernés dans Home Assistant. Un changement du package
-demande une vérification de configuration et un redémarrage ; un changement de
-la carte demande de remplacer son YAML dans le tableau de bord.
+Le code installable est dans `custom_components/sncf_epernon/`. HACS gère ses
+mises à jour ; après une mise à jour, redémarrer Home Assistant. Les évolutions
+du YAML de la carte doivent être reportées dans le tableau de bord.
 
-Le dépôt conserve l'historique et permet de revenir à une version précédente.
-La synchronisation vers Home Assistant reste manuelle.
+Les fichiers `packages/` et `dashboards/carte-legacy.yaml` conservent l'ancienne
+version YAML comme référence. Ils ne sont pas installés par HACS. Ne pas activer
+les deux versions simultanément.
 
-La clé SNCF reste dans le `secrets.yaml` de Home Assistant. Ce fichier et les
-données générées par Home Assistant sont exclus du suivi Git. Les tests n'ont
-besoin d'aucune clé ni d'aucun accès à votre installation.
-
-## Vérifications locales
-
-Avec Python 3.13 ou supérieur :
+Avec Python **3.14.2 ou supérieur** :
 
 ```sh
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
+python -m unittest discover -s tests -p 'test_*.py' -v
 python tests/verify_templates.py
 ```
 
-Les vérifications exécutent les modèles Jinja présents dans le package distribué
-sur des exemples de réponses SNCF : retards, suppressions liées à un départ,
-périodes d'application, jours de semaine, créneaux passant minuit, données
-absentes ou périmées, départs du lendemain et trains supplémentaires.
-
-Elles ne remplacent pas la validation de configuration de Home Assistant ni un
-essai avec les données SNCF réelles.
+Les tests exercent le traitement des départs et les classes de Home Assistant
+2026.10.2, avec simulation de la SNCF. GitHub vérifie aussi la structure HACS et
+les manifestes avec hassfest. La validation HACS ignore uniquement les métadonnées
+de catalogue (description, topics et licence) ; elle vérifie les fichiers
+installables, le manifeste HACS et l'icône.
